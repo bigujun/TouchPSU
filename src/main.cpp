@@ -1,4 +1,10 @@
-
+/**
+ * @Author: Anderson Juncowski <anderson>
+ * @Date:   2018-08-02T20:01:42-03:00
+ * @Email:  andersonj@hotmail.rs
+ * @Last modified by:   anderson
+ * @Last modified time: 2018-08-02T20:03:48-03:00
+ */
 
 #include "GUIslice.h"
 #include "GUIslice_ex.h"
@@ -7,15 +13,19 @@
 #include <Adafruit_GFX.h>
 
 
-#include "Fonts/FreeSansBold12pt7b.h"
-#include "Fonts/TomThumb.h"
+#include "Fonts/FreeSansBold9pt7b.h"
+#include "Fonts/FreeSansBold18pt7b.h"
 
 
 
 // Enumerations for pages, elements, fonts, images
 enum {E_PG_MAIN,E_PG_KEYBOARD};
-enum {E_ELEM_BOX_A,E_ELEM_BOX_B,E_ELEM_BTN_QUIT,E_ELEM_BTN_BTN,E_ELEM_TXT_COUNT};
-enum {E_FONT_BTN,E_FONT_TXT};
+enum {E_ELEM_BOX_A,E_ELEM_BOX_B,E_ELEM_BTN_QUIT,E_ELEM_BTN_BTN,E_ELEM_TXT_COUNT
+      ,E_ELEM_BTN_1,E_ELEM_BTN_2,E_ELEM_BTN_3,E_ELEM_BTN_PREV,E_ELEM_BTN_NEXT
+      ,E_ELEM_BTN_4,E_ELEM_BTN_5,E_ELEM_BTN_6,E_ELEM_BTN_CANCEL,E_ELEM_BTN_OK
+      ,E_ELEM_BTN_7,E_ELEM_BTN_8,E_ELEM_BTN_9,E_ELEM_BTN_0,E_ELEM_BTN_SEPARATOR
+};
+enum {E_FONT_BIG,E_FONT_NORMAL,E_FONT_TXT};
 enum {E_GROUP1};
 
 bool        m_bQuit = false;
@@ -26,14 +36,14 @@ unsigned    m_nCount = 0;
 
 // Instantiate the GUI
 #define MAX_PAGE                2
-#define MAX_FONT                2
+#define MAX_FONT                3
 
 // Define the maximum number of elements per page
 #define MAX_ELEM_PG_MAIN          16                                        // # Elems total
 #define MAX_ELEM_PG_MAIN_RAM      MAX_ELEM_PG_MAIN                          // # Elems in RAM
 
-#define MAX_ELEM_PG_KEYBOARD          16                                        // # Elems total
-#define MAX_ELEM_PG_KEYBOARD_RAM      MAX_ELEM_PG_MAIN
+#define MAX_ELEM_PG_KEYBOARD          22                                        // # Elems total
+#define MAX_ELEM_PG_KEYBOARD_RAM      MAX_ELEM_PG_KEYBOARD
 
 gslc_tsGui                  m_gui;
 gslc_tsDriver               m_drv;
@@ -53,7 +63,7 @@ gslc_tsElemRef              m_asPageElemKeyboardRef[MAX_ELEM_PG_KEYBOARD];
 #define MAX_STR             15
 
   // Save some element references for quick access
-  gslc_tsElemRef*  m_pElemCnt        = NULL;
+  // gslc_tsElemRef*  m_pElemCnt        = NULL;
   gslc_tsElemRef*  m_pElemProgress   = NULL;
   gslc_tsElemRef*  m_pElemProgress1  = NULL;
   gslc_tsElemRef*  m_pElemSlider     = NULL;
@@ -65,11 +75,8 @@ static int16_t DebugOut(char ch) { Serial.write(ch); return 0; }
 // Button callbacks
 
 
-
-
-//PAGINA PRINCIPAL
-
 struct Channel{
+  char name;
   float voltage,current,voltageSet,currentSet;
   bool status = false;
   gslc_tsElemRef* txtVoltage=NULL;
@@ -78,13 +85,172 @@ struct Channel{
   gslc_tsElemRef* txtCurrentSet=NULL;
   gslc_tsElemRef* txtPotenci=NULL;
   gslc_tsElemRef* btnOn=NULL;
-}Ch_A,Ch_B;
+  Channel(char n):name(n){};
+};
+Channel Ch_A('A');
+Channel Ch_B('B');
+
+enum type{
+  VOLTAGE,
+  CURRENT
+};
+
+// PAGINA E_PG_KEYBOARD
+
+gslc_tsElemRef* elemRefValue = NULL;
+uint8_t valueCursor = 0;
+char valueStr[6] = "00.00";
+char channelStr[5]="Ch A";
+char unityStr[5]="Amp";
+
+
+
+void cursorNext(){
+  if(valueCursor<4){
+    valueCursor++;
+  }
+  if(valueCursor==2)valueCursor++;
+}
+
+void cursorPrev(){
+  if(valueCursor>0){
+    valueCursor--;
+  }
+  if(valueCursor==2)valueCursor--;
+}
+
+
+void setCursor(uint8_t cur){
+  valueCursor = cur;
+}
+
+void setValue(char val){
+  valueStr[valueCursor] = val;
+  Serial.println(valueStr);
+  cursorNext();
+  gslc_ElemSetRedraw(&m_gui, elemRefValue, GSLC_REDRAW_INC);
+}
+
+void saveValue(){
+
+}
+
+void loadKeyboard(Channel* ch, type t){
+
+  // valueStr=""
+  setCursor(0);
+  channelStr[3]=ch->name;
+  switch(t){
+    case VOLTAGE:
+      // unityStr="Volt";
+      snprintf(valueStr,6,"%2.2f",0);
+    break;
+    case CURRENT:
+      // unityStr="Amp";
+      snprintf(valueStr,6,"%FA",12);
+    break;
+  }
+  gslc_SetPageCur(&m_gui,E_PG_KEYBOARD);
+}
+
+bool CbBtnKeyboard(void* pvGui,void *pvElem,gslc_teTouch eTouch,int16_t nX,int16_t nY)
+{
+  gslc_tsElemRef* pElemRef = (gslc_tsElemRef*)(pvElem);
+  gslc_tsElem* pElem = pElemRef->pElem;
+  int16_t nElemId = pElem->nId;
+  if (eTouch == GSLC_TOUCH_UP_IN) {
+    if (nElemId == E_ELEM_BTN_0) {
+      setValue('0');
+    } else if (nElemId == E_ELEM_BTN_1) {
+      setValue('1');
+    } else if (nElemId == E_ELEM_BTN_2) {
+      setValue('2');
+    }  else if (nElemId == E_ELEM_BTN_3) {
+      setValue('3');
+    }  else if (nElemId == E_ELEM_BTN_4) {
+      setValue('4');
+    }  else if (nElemId == E_ELEM_BTN_5) {
+      setValue('5');
+    }  else if (nElemId == E_ELEM_BTN_6) {
+      setValue('6');
+    }  else if (nElemId == E_ELEM_BTN_7) {
+      setValue('7');
+    }  else if (nElemId == E_ELEM_BTN_8) {
+      setValue('8');
+    }  else if (nElemId == E_ELEM_BTN_9) {
+      setValue('9');
+    } else if (nElemId == E_ELEM_BTN_NEXT) {
+      cursorNext();
+    }  else if (nElemId == E_ELEM_BTN_PREV) {
+      cursorPrev();
+    }  else if (nElemId == E_ELEM_BTN_OK) {
+      saveValue();
+      gslc_SetPageCur(&m_gui,E_PG_MAIN);
+    }  else if (nElemId == E_ELEM_BTN_CANCEL) {
+      gslc_SetPageCur(&m_gui,E_PG_MAIN);
+    }  else if (nElemId == E_ELEM_BTN_SEPARATOR) {
+      setCursor(3);
+    }
+
+  }
+  return true;
+}
+
+void addKeyboardBtn(char* txt,uint16_t elementId){
+  static const uint16_t btnW = m_gui.nDispW/5;
+  static const uint16_t btnH = m_gui.nDispH/5;
+  static int lin=2,col=-1;
+  col++;
+  if(col>=5){
+    col=0;
+    lin++;
+  }
+  gslc_ElemCreateBtnTxt(&m_gui,elementId,E_PG_KEYBOARD,(gslc_tsRect){col*btnW,lin*btnH,btnW,btnH},txt,0,E_FONT_BIG,&CbBtnKeyboard);
+}
+
+bool initPgKeyboard(){
+  gslc_tsElemRef* pElemRef;
+  gslc_PageAdd(&m_gui,E_PG_KEYBOARD,m_asPageElemKeyboard,MAX_ELEM_PG_KEYBOARD_RAM,m_asPageElemKeyboardRef,MAX_ELEM_PG_KEYBOARD);
+  // pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_BTN,E_PG_KEYBOARD,(gslc_tsRect){160,80,80,40},(char*)"BTN",0,E_FONT_BIG,&CbBtnBTN);
+
+  addKeyboardBtn((char*)"1",E_ELEM_BTN_1);
+  addKeyboardBtn((char*)"2",E_ELEM_BTN_2);
+  addKeyboardBtn((char*)"3",E_ELEM_BTN_3);
+  addKeyboardBtn((char*)"<",E_ELEM_BTN_PREV);
+  addKeyboardBtn((char*)">",E_ELEM_BTN_NEXT);
+  addKeyboardBtn((char*)"4",E_ELEM_BTN_4);
+  addKeyboardBtn((char*)"5",E_ELEM_BTN_5);
+  addKeyboardBtn((char*)"6",E_ELEM_BTN_6);
+  addKeyboardBtn((char*)"X",E_ELEM_BTN_CANCEL);
+  addKeyboardBtn((char*)"OK",E_ELEM_BTN_OK);
+  addKeyboardBtn((char*)"7",E_ELEM_BTN_7);
+  addKeyboardBtn((char*)"8",E_ELEM_BTN_8);
+  addKeyboardBtn((char*)"9",E_ELEM_BTN_9);
+  addKeyboardBtn((char*)"0",E_ELEM_BTN_0);
+  addKeyboardBtn((char*)".",E_ELEM_BTN_SEPARATOR);
+
+  pElemRef = gslc_ElemCreateTxt(&m_gui, GSLC_ID_AUTO, E_PG_KEYBOARD, (gslc_tsRect){m_gui.nDispW/2+50,m_gui.nDispH/5-16,80,32},(char*)"Ampere",0,E_FONT_NORMAL);
+
+
+  pElemRef = gslc_ElemCreateTxt(&m_gui, GSLC_ID_AUTO, E_PG_KEYBOARD, (gslc_tsRect){m_gui.nDispW/2-50,m_gui.nDispH/5-16,100,32},valueStr,0,E_FONT_BIG);
+  gslc_ElemSetTxtAlign(&m_gui, pElemRef, GSLC_ALIGN_MID_MID);
+  elemRefValue=pElemRef;
+  pElemRef = gslc_ElemCreateTxt(&m_gui, GSLC_ID_AUTO, E_PG_KEYBOARD, (gslc_tsRect){m_gui.nDispW/2+50,m_gui.nDispH/5-16,80,32},(char*)"Ampere",0,E_FONT_NORMAL);
+  // pElemRef = gslc_ElemCreateTxt(&m_gui, GSLC_ID_AUTO, E_PG_KEYBOARD, (gslc_tsRect){m_gui.nDispW/2-100,m_gui.nDispH/5-16,200,32},(char*)"00.00",0,E_FONT_BIG);
+
+  return true;
+}
+
+
+//PAGINA PRINCIPAL
+
 
 bool CbBtnQuit(void* pvGui,void *pvElem,gslc_teTouch eTouch,int16_t nX,int16_t nY)
 {
   if (eTouch == GSLC_TOUCH_UP_IN) {
     // m_bQuit = true;
-    gslc_SetPageCur(&m_gui,E_PG_KEYBOARD);
+    // gslc_SetPageCur(&m_gui,E_PG_KEYBOARD);
+    loadKeyboard(&Ch_A,VOLTAGE);
   }
   return true;
 }
@@ -113,39 +279,37 @@ bool initPgMain(){
   gslc_ElemCreateBox_P(&m_gui,201,E_PG_MAIN,155,0,10,170,GSLC_COL_GRAY_DK3,GSLC_COL_BLACK,true,true,NULL,NULL);
   gslc_ElemCreateBox_P(&m_gui,202,E_PG_MAIN,0,170,320,70,GSLC_COL_GRAY_DK3,GSLC_COL_BLACK,true,true,NULL,NULL);
 
-  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_QUIT,E_PG_MAIN,(gslc_tsRect){160,80,80,40},(char*)"Quit",0,E_FONT_BTN,&CbBtnQuit);
+  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_QUIT,E_PG_MAIN,(gslc_tsRect){160,80,80,40},(char*)"Quit",0,E_FONT_BIG,&CbBtnQuit);
   // Create counter
-  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){20,60,50,10},
-    (char*)"Count:",0,E_FONT_TXT);
-  static char mstr1[8] = "";
-  pElemRef = gslc_ElemCreateTxt(&m_gui,E_ELEM_TXT_COUNT,E_PG_MAIN,(gslc_tsRect){80,60,50,10},
-    mstr1,sizeof(mstr1),E_FONT_TXT);
-  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_YELLOW);
-  m_pElemCnt = pElemRef; // Save for quick access
+  // pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){20,60,50,10},
+  //   (char*)"Count:",0,E_FONT_TXT);
+  // static char mstr1[8] = "";
+  // pElemRef = gslc_ElemCreateTxt(&m_gui,E_ELEM_TXT_COUNT,E_PG_MAIN,(gslc_tsRect){80,60,50,10},
+  //   mstr1,sizeof(mstr1),E_FONT_TXT);
+  // gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_YELLOW);
+  // m_pElemCnt = pElemRef; // Save for quick access
 
   static char strVoltSet[8] = "25.00V";
-  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){10,20,70,15},strVoltSet,sizeof(strVoltSet),E_FONT_BTN);
-  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_YELLOW);
+  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){10,20,70,15},strVoltSet,sizeof(strVoltSet),E_FONT_NORMAL);
+  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
   Ch_A.txtVoltageSet = pElemRef;
 
   static char strCurrSet[8] = "00.00A";
-  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){80,20,70,15},strCurrSet,sizeof(strCurrSet),E_FONT_BTN);
-  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_YELLOW);
+  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){80,20,70,15},strCurrSet,sizeof(strCurrSet),E_FONT_NORMAL);
+  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
   Ch_A.txtCurrentSet = pElemRef;
 
   static char strVolt[8] = "00.00V";
-  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){20,50,100,20},strVolt,sizeof(strVolt),E_FONT_BTN);
-  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_YELLOW);
+  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){20,50,100,20},strVolt,sizeof(strVolt),E_FONT_BIG);
+  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
   Ch_A.txtVoltage = pElemRef;
 
   static char strCurr[8] = "00.00A";
-  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){20,80,100,20},strCurr,sizeof(strCurr),E_FONT_BTN);
-  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_YELLOW);
-  Ch_A.txtCurrent = pElemRef;
+  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){20,80,100,20},strCurr,sizeof(strCurr),E_FONT_BIG);
 
   static char strBtnOn[8] = "ON";
-  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){10,120,70,50},strBtnOn,sizeof(strBtnOn),E_FONT_BTN,&CbBtnOn);
-  // gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_YELLOW);
+  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){10,120,70,50},strBtnOn,sizeof(strBtnOn),E_FONT_BIG,&CbBtnOn);
+  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
   Ch_A.btnOn = pElemRef;
 
 
@@ -155,22 +319,9 @@ bool initPgMain(){
 }
 
 
-// PAGINA E_PG_KEYBOARD
 
-bool CbBtnBTN(void* pvGui,void *pvElem,gslc_teTouch eTouch,int16_t nX,int16_t nY)
-{
-  if (eTouch == GSLC_TOUCH_UP_IN) {
-    gslc_SetPageCur(&m_gui,E_PG_MAIN);
-  }
-  return true;
-}
 
-bool initPgKeyboard(){
-  gslc_tsElemRef* pElemRef;
-  gslc_PageAdd(&m_gui,E_PG_KEYBOARD,m_asPageElemKeyboard,MAX_ELEM_PG_KEYBOARD_RAM,m_asPageElemKeyboardRef,MAX_ELEM_PG_KEYBOARD);
-  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_BTN,E_PG_KEYBOARD,(gslc_tsRect){160,80,80,40},(char*)"BTN",0,E_FONT_BTN,&CbBtnBTN);
-  return true;
-}
+
 
 // Create page elements
 bool InitOverlays()
@@ -190,8 +341,8 @@ void setup()
   // Initialize
   if (!gslc_Init(&m_gui,&m_drv,m_asPage,MAX_PAGE,m_asFont,MAX_FONT)) { return; }
 
-
-  if (!gslc_FontAdd(&m_gui,E_FONT_BTN,GSLC_FONTREF_PTR,&TomThumb,1)) { return; }
+  if (!gslc_FontAdd(&m_gui,E_FONT_BIG,GSLC_FONTREF_PTR,&FreeSansBold18pt7b,1)) { return; }
+  if (!gslc_FontAdd(&m_gui,E_FONT_NORMAL,GSLC_FONTREF_PTR,&FreeSansBold9pt7b,1)) { return; }
 
   if (!gslc_FontAdd(&m_gui,E_FONT_TXT,GSLC_FONTREF_PTR,NULL,1)) { return; }
 
@@ -206,19 +357,19 @@ void setup()
 
 void loop()
 {
-  char                acTxt[MAX_STR];
+  // char                acTxt[MAX_STR];
 
   // General counter
-  m_nCount++;
+  // m_nCount++;
 
   // Update elements on active page
 
-  snprintf(acTxt,MAX_STR,"%u",m_nCount/5);
-  gslc_ElemSetTxtStr(&m_gui,m_pElemCnt,acTxt);
+  // snprintf(acTxt,MAX_STR,"%u",m_nCount/5);
+  // gslc_ElemSetTxtStr(&m_gui,m_pElemCnt,acTxt);
 
 
 
-  gslc_ElemSetTxtStr(&m_gui,m_pElemSliderTxt,acTxt);
+  // gslc_ElemSetTxtStr(&m_gui,m_pElemSliderTxt,acTxt);
 
 
 

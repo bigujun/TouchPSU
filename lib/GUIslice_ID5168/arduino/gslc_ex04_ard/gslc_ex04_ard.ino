@@ -50,7 +50,7 @@ unsigned    m_nCount = 0;
 
 // Instantiate the GUI
 #define MAX_PAGE                1
-#define MAX_FONT                2
+#define MAX_FONT                3
 
 // Define the maximum number of elements per page
 #define MAX_ELEM_PG_MAIN          16                                        // # Elems total
