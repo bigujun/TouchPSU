@@ -5,7 +5,7 @@
  * @Last modified by:   anderson
  * @Last modified time: 2018-08-02T20:03:48-03:00
  */
-
+#include <Arduino.h>
 #include "GUIslice.h"
 #include "GUIslice_ex.h"
 #include "GUIslice_drv.h"
@@ -28,6 +28,7 @@ enum {/*PG_KEYBOARD*/
       ,E_ELEM_BTN_7,E_ELEM_BTN_8,E_ELEM_BTN_9,E_ELEM_BTN_0,E_ELEM_BTN_SEPARATOR
       /*PG_MAIN*/
       ,E_ELEM_BTN_CHAV,E_ELEM_BTN_CHAC,E_ELEM_BTN_CHASTATUS
+      ,E_ELEM_BTN_CHBV,E_ELEM_BTN_CHBC,E_ELEM_BTN_CHBSTATUS
 };
 enum {E_FONT_BIG,E_FONT_NORMAL,E_FONT_TXT};
 enum {E_GROUP1};
@@ -81,8 +82,8 @@ static int16_t DebugOut(char ch) { Serial.write(ch); return 0; }
 #include "Channel.h"
 
 
-Channel Ch_A('A');
-Channel Ch_B('B');
+Channel Ch_A('A',A13,A9,44);
+Channel Ch_B('B',A11,A8,45);
 
 
 
@@ -126,6 +127,8 @@ void setValue(char val){
 
 void saveValue(){
   chRef->set(type,valueStr);
+  // Ch_A.set(type,valueStr);
+  // Ch_B.set(type,valueStr);
 }
 
 
@@ -234,9 +237,6 @@ bool initPgKeyboard(){
   elemRefValue=pElemRef;
   // pElemRef = gslc_ElemCreateTxt(&m_gui, GSLC_ID_AUTO, E_PG_KEYBOARD, (gslc_tsRect){m_gui.nDispW/2+60,m_gui.nDispH/5-16,80,32},unityStr,0,E_FONT_BIG);
   // pElemRef = gslc_ElemCreateTxt(&m_gui, GSLC_ID_AUTO, E_PG_KEYBOARD, (gslc_tsRect){m_gui.nDispW/2-100,m_gui.nDispH/5-16,200,32},(char*)"00.00",0,E_FONT_BIG);
-
-
-
   return true;
 }
 
@@ -254,6 +254,12 @@ bool onClick_Main(void* pvGui,void *pvElem,gslc_teTouch eTouch,int16_t nX,int16_
       loadKeyboard(&Ch_A,Channel::CURRENT);
     } else if (nElemId == E_ELEM_BTN_CHASTATUS) {
       Ch_A.toogleStatus();
+    }else if (nElemId == E_ELEM_BTN_CHBV) {
+      loadKeyboard(&Ch_B,Channel::VOLTAGE);
+    } else if (nElemId == E_ELEM_BTN_CHBC) {
+      loadKeyboard(&Ch_B,Channel::CURRENT);
+    } else if (nElemId == E_ELEM_BTN_CHBSTATUS) {
+      Ch_B.toogleStatus();
     }
   }
   return true;
@@ -263,6 +269,9 @@ bool onClick_Main(void* pvGui,void *pvElem,gslc_teTouch eTouch,int16_t nX,int16_
 
 bool initPgMain(){
   gslc_tsElemRef* pElemRef;
+  gslc_tsElemRef* pElemRefVolt;
+  gslc_tsElemRef* pElemRefPot;
+  gslc_tsElemRef* pElemRefCur;
   gslc_PageAdd(&m_gui,E_PG_MAIN,m_asPageElem,MAX_ELEM_PG_MAIN_RAM,m_asPageElemRef,MAX_ELEM_PG_MAIN);
 
   // gslc_ElemCreateBox_P(&m_gui,200,E_PG_MAIN,10,10,140,150,GSLC_COL_GRAY_DK3,GSLC_COL_BLACK,true,true,NULL,NULL);
@@ -280,30 +289,60 @@ bool initPgMain(){
   // m_pElemCnt = pElemRef; // Save for quick access
 
   // static char strVoltSet[8] = "25.00V";
-  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_CHAV,E_PG_MAIN,(gslc_tsRect){5,5,70,32},Ch_A.voltageSetStr,sizeof(Ch_A.voltageSetStr),E_FONT_NORMAL,&onClick_Main);
+
+
+  uint16_t padding_left = 0;
+  Channel* chPtr = &Ch_A;
+  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_CHAV,E_PG_MAIN,(gslc_tsRect){padding_left+5,5,70,32},chPtr->voltageSetStr,sizeof(chPtr->voltageSetStr),E_FONT_NORMAL,&onClick_Main);
   gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
   // Ch_A.txtVoltageSet = pElemRef;
 
   // static char strCurrSet[8] = "00.00A";
 
-  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_CHAC,E_PG_MAIN,(gslc_tsRect){80,5,70,32},Ch_A.currentSetStr,sizeof(Ch_A.currentSetStr),E_FONT_NORMAL,&onClick_Main);
+  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_CHAC,E_PG_MAIN,(gslc_tsRect){padding_left+80,5,70,32},chPtr->currentSetStr,sizeof(chPtr->currentSetStr),E_FONT_NORMAL,&onClick_Main);
   gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
   // Ch_A.txtCurrentSet = pElemRef;
 
   // static char strVolt[8] = "00.00V";
-  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){20,50,100,20},Ch_A.voltageStr,sizeof(Ch_A.voltageStr),E_FONT_BIG);
+  pElemRefVolt = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){padding_left+20,50,100,20},chPtr->voltageStr,sizeof(chPtr->voltageStr),E_FONT_BIG);
+  gslc_ElemSetTxtCol(&m_gui,pElemRefVolt,GSLC_COL_WHITE);
+  // Ch_A.txtVoltage = pElemRef;
+
+  // static char strCurr[8] = "00.00A";
+  pElemRefCur = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){padding_left+20,80,100,20},chPtr->currentStr,sizeof(chPtr->currentStr),E_FONT_BIG);
+
+  // static char strBtnOn[8] = "ON";
+  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_CHASTATUS,E_PG_MAIN,(gslc_tsRect){padding_left+5,120,80,50},chPtr->statusStr,sizeof(chPtr->statusStr),E_FONT_BIG,&onClick_Main);
+  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
+  // Ch_A.btnOn = pElemRef;
+
+  Ch_A.setup(&m_gui,pElemRefVolt, pElemRefCur, NULL);
+  // CH B
+  padding_left = 165;
+  chPtr = &Ch_B;
+  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_CHBV,E_PG_MAIN,(gslc_tsRect){padding_left+5,5,70,32},chPtr->voltageSetStr,sizeof(chPtr->voltageSetStr),E_FONT_NORMAL,&onClick_Main);
+  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
+  // Ch_A.txtVoltageSet = pElemRef;
+
+  // static char strCurrSet[8] = "00.00A";
+
+  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_CHBC,E_PG_MAIN,(gslc_tsRect){padding_left+80,5,70,32},chPtr->currentSetStr,sizeof(chPtr->currentSetStr),E_FONT_NORMAL,&onClick_Main);
+  gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
+  // Ch_A.txtCurrentSet = pElemRef;
+
+  // static char strVolt[8] = "00.00V";
+  pElemRefVolt = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){padding_left+20,50,100,20},chPtr->voltageStr,sizeof(chPtr->voltageStr),E_FONT_BIG);
   gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
   // Ch_A.txtVoltage = pElemRef;
 
   // static char strCurr[8] = "00.00A";
-  pElemRef = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){20,80,100,20},Ch_A.currentStr,sizeof(Ch_A.currentStr),E_FONT_BIG);
+  pElemRefCur = gslc_ElemCreateTxt(&m_gui,GSLC_ID_AUTO,E_PG_MAIN,(gslc_tsRect){padding_left+20,80,100,20},chPtr->currentStr,sizeof(chPtr->currentStr),E_FONT_BIG);
 
   // static char strBtnOn[8] = "ON";
-  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_CHASTATUS,E_PG_MAIN,(gslc_tsRect){5,120,80,50},Ch_A.statusStr,sizeof(Ch_A.statusStr),E_FONT_BIG,&onClick_Main);
+  pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_CHBSTATUS,E_PG_MAIN,(gslc_tsRect){padding_left+5,120,80,50},chPtr->statusStr,sizeof(chPtr->statusStr),E_FONT_BIG,&onClick_Main);
   gslc_ElemSetTxtCol(&m_gui,pElemRef,GSLC_COL_WHITE);
-  // Ch_A.btnOn = pElemRef;
 
-
+  Ch_B.setup(&m_gui,pElemRefVolt, pElemRefCur, NULL);
 
 // pElemRef = gslc_ElemCreateBtnTxt(&m_gui,E_ELEM_BTN_QUIT,E_PG_MAIN,(gslc_tsRect){160,80,80,40},(char*)"Quit",0,E_FONT_BTN,&CbBtnQuit);
   return true;
@@ -313,21 +352,11 @@ bool initPgMain(){
 
 
 
-
-// Create page elements
-bool InitOverlays()
-{
-  gslc_SetBkgndColor(&m_gui,GSLC_COL_GRAY_DK2);
-  initPgMain();
-  initPgKeyboard();
-  return true;
-}
-
-
 void setup()
 {
   Serial.begin(9600);
   gslc_InitDebug(&DebugOut);
+
 
   // Initialize
   if (!gslc_Init(&m_gui,&m_drv,m_asPage,MAX_PAGE,m_asFont,MAX_FONT)) { return; }
@@ -338,10 +367,17 @@ void setup()
   if (!gslc_FontAdd(&m_gui,E_FONT_TXT,GSLC_FONTREF_PTR,NULL,1)) { return; }
 
   // Create graphic elements
-  InitOverlays();
+
+  gslc_SetBkgndColor(&m_gui,GSLC_COL_GRAY_DK2);
+  initPgMain();
+  initPgKeyboard();
 
   // Start up display on main page
   gslc_SetPageCur(&m_gui,E_PG_MAIN);
+
+  // analogReference(INTERNAL1V1);
+
+
 
   m_bQuit = false;
 }
@@ -365,10 +401,16 @@ void loop()
 
 
   // Periodically call GUIslice update function
-  gslc_Update(&m_gui);
 
+  gslc_Update(&m_gui);
+  Ch_B.interrupt();
+  gslc_Update(&m_gui);
+  Ch_A.interrupt();
   // Slow down updates
-  delay(10);
+  //
+  //
+  // gslc_ElemSetRedraw(&mgui, gslc_tsElemRef *pElemRef, gslc_teRedrawType eRedraw);
+  // delay(10);
 
   // In a real program, we would detect the button press and take an action.
   // For this Arduino demo, we will pretend to exit by emulating it with an
